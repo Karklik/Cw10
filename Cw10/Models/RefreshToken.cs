@@ -1,4 +1,4 @@
-﻿namespace CW10.DBModels
+﻿namespace CW10.Models
 {
     public partial class RefreshToken
     {

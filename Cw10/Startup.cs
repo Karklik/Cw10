@@ -1,5 +1,5 @@
 using CW10.DAL;
-using CW10.DBModels;
+using CW10.Models;
 using CW10.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;

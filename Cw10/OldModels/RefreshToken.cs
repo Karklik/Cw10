@@ -1,4 +1,4 @@
-﻿namespace CW10.Models
+﻿namespace CW10.OldModels
 {
     public class RefreshToken
     {

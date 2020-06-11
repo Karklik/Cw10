@@ -1,7 +1,7 @@
 ﻿using CW10.DAL;
 using CW10.DTOs.Requests;
 using CW10.DTOs.Responses;
-using CW10.Models;
+using CW10.OldModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.AspNetCore.Mvc;

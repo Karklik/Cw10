@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace CW10.DBModels
+namespace CW10.Models
 {
     public partial class SqlServerStudentContext : DbContext
     {

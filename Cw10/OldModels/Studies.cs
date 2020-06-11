@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace CW10.Models
+namespace CW10.OldModels
 {
     public class Studies
     {
