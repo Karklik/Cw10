@@ -1,7 +1,7 @@
 ﻿using CW10.DAL;
 using CW10.DTOs.Requests;
 using CW10.DTOs.Responses;
-using CW10.OldModels;
+using CW10.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.AspNetCore.Mvc;
@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Security.Claims;
 using System.Text;
 
@@ -142,7 +143,15 @@ namespace CW10.Controllers
         [HttpGet]
         public IActionResult GetStudents(string orderBy)
         {
-            return Ok(_dbService.GetStudents(orderBy));
+            return Ok(_dbService.GetStudents(orderBy)
+                .Select(student => new GetStudentResponse
+                {
+                    IndexNumber = student.IndexNumber,
+                    FirstName = student.FirstName,
+                    LastName = student.LastName,
+                    BirthDate = student.BirthDate,
+                    IdEnrollment = student.IdEnrollment
+                }).ToList());
         }
 
         [HttpGet("{indexNumber}")]
@@ -150,7 +159,14 @@ namespace CW10.Controllers
         {
             var student = _dbService.GetStudent(indexNumber);
             if (student != null)
-                return Ok(student);
+                return Ok(new GetStudentResponse
+                {
+                    IndexNumber = student.IndexNumber,
+                    FirstName = student.FirstName,
+                    LastName = student.LastName,
+                    BirthDate = student.BirthDate,
+                    IdEnrollment = student.IdEnrollment
+                });
             else
                 return NotFound("Nie znaleziono studneta");
         }
@@ -166,16 +182,46 @@ namespace CW10.Controllers
         }
 
         [HttpPost]
-        public IActionResult CreateStudent(Student student)
+        public IActionResult CreateStudent(CreateStudentRequest request)
         {
+            var student = new Student
+            {
+                IndexNumber = request.IndexNumber,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                BirthDate = request.BirthDate,
+                IdEnrollment = request.IdEnrollment,
+            };
             if (_dbService.CreateStudent(student) > 0)
-                return Ok(student);
-            return Conflict(student);
+                return Ok(new GetStudentResponse
+                {
+                    IndexNumber = student.IndexNumber,
+                    FirstName = student.FirstName,
+                    LastName = student.LastName,
+                    BirthDate = student.BirthDate,
+                    IdEnrollment = student.IdEnrollment
+                });
+            return Conflict(new GetStudentResponse
+            {
+                IndexNumber = student.IndexNumber,
+                FirstName = student.FirstName,
+                LastName = student.LastName,
+                BirthDate = student.BirthDate,
+                IdEnrollment = student.IdEnrollment
+            });
         }
 
         [HttpPut("{indexNumber}")]
-        public IActionResult UpdateStudent(string indexNumber, Student student)
+        public IActionResult UpdateStudent(string indexNumber, UpdateStudentRequest request)
         {
+            var student = new Student
+            {
+                IndexNumber = request.IndexNumber,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                BirthDate = request.BirthDate,
+                IdEnrollment = request.IdEnrollment,
+            };
             if (_dbService.UpdateStudent(indexNumber, student) > 0)
                 return Ok("Aktualizacja dokończona");
             else

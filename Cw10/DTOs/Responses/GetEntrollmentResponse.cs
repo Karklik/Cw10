@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace CW10.DTOs.Responses
 {
@@ -9,7 +10,7 @@ namespace CW10.DTOs.Responses
         [Required]
         public int Semester { get; set; }
         [Required]
-        public string StartDate { get; set; }
+        public DateTime StartDate { get; set; }
         [Required]
         public int IdStudy { get; set; }
     }

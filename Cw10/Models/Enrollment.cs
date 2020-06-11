@@ -14,6 +14,7 @@ namespace CW10.Models
         public int Semester { get; set; }
         public int IdStudy { get; set; }
         public DateTime StartDate { get; set; }
+        public string Name { get; set; }
 
         public virtual Studies IdStudyNavigation { get; set; }
         public virtual ICollection<Student> Students { get; set; }

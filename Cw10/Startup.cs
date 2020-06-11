@@ -40,7 +40,7 @@ namespace CW10
                     };
                 });
             services.AddTransient<IStudentDbService, SqlServerStudentDbService>();
-            services.AddDbContext<SqlServerStudentContext>(optionsAction =>
+            services.AddDbContext<SqlServerStudentDbContext>(optionsAction =>
                 optionsAction.UseSqlServer(Configuration["dbConnectionString"]));
             services.AddControllers();
             services.AddSwaggerGen(config =>

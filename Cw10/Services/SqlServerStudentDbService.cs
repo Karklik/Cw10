@@ -1,9 +1,14 @@
-﻿using CW10.OldModels;
+﻿using CW10.Models;
+using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.VisualBasic.CompilerServices;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace CW10.DAL
 {
@@ -11,6 +16,13 @@ namespace CW10.DAL
     {
         private readonly string connectionString = "Data Source=db-mssql;Initial Catalog=s16556;Integrated Security=True";
         private SqlConnection SqlConnection => new SqlConnection(connectionString);
+
+        private readonly SqlServerStudentDbContext _dbContext;
+
+        public SqlServerStudentDbService(SqlServerStudentDbContext dbContext)
+        {
+            _dbContext = dbContext;
+        }
 
         public int CreateRefreshToken(RefreshToken refreshToken)
         {
@@ -30,20 +42,26 @@ namespace CW10.DAL
 
         public int CreateStudent(Student student)
         {
-            using var connection = SqlConnection;
-            using var command = new SqlCommand
+            if (_dbContext.Student.Where(s => string.Equals(s.IndexNumber, student.IndexNumber))
+                .FirstOrDefault() != null)
+                return 0;
+            _dbContext.Student.Add(student);
+            if (student.Password == null || student.Salt == null)
             {
-                Connection = connection,
-                CommandText = "INSERT INTO Student " +
-                "VALUES(@indexNumber, @firstName, @lastName, @birthDate, @idEnrollment)"
-            };
-            command.Parameters.AddWithValue("indexNumber", student.IndexNumber);
-            command.Parameters.AddWithValue("firstName", student.FirstName);
-            command.Parameters.AddWithValue("lastName", student.LastName);
-            command.Parameters.AddWithValue("birthDate", student.BirthDate);
-            command.Parameters.AddWithValue("idEnrollment", student.IdEnrollment);
-            connection.Open();
-            return command.ExecuteNonQuery();
+                byte[] randomBytes = new Byte[16];
+                RandomNumberGenerator.Create().GetNonZeroBytes(randomBytes);
+                student.Salt = Convert.ToBase64String(new HMACSHA512().ComputeHash(randomBytes));
+                student.Password = Convert.ToBase64String(
+                        KeyDerivation.Pbkdf2(
+                            password: "defaultPassword2020",
+                            salt: Encoding.UTF8.GetBytes(student.Salt),
+                            prf: KeyDerivationPrf.HMACSHA512,
+                            iterationCount: 10000,
+                            numBytesRequested: 256 / 8
+                        )
+                    );
+            }
+            return _dbContext.SaveChanges();
         }
 
         public Enrollment CreateStudentEnrollment(
@@ -89,7 +107,7 @@ namespace CW10.DAL
                     {
                         IdEnrollment = IntegerType.FromObject(reader["IdEnrollment"]),
                         Semester = IntegerType.FromObject(reader["Semester"]),
-                        StartDate = reader["StartDate"].ToString(),
+                        StartDate = DateTime.Parse(reader["StartDate"].ToString()),
                         IdStudy = IntegerType.FromObject(reader["IdStudy"])
                     };
                     reader.Close();
@@ -113,7 +131,7 @@ namespace CW10.DAL
                         IdEnrollment = IdEnrollment,
                         Semester = 1,
                         IdStudy = studies.IdStudy,
-                        StartDate = DateTime.Now.ToString("yyyy-MM-dd")
+                        StartDate = DateTime.Now
                     };
                     command.CommandText = "INSERT INTO Enrollment (IdEnrollment, Semester, IdStudy, StartDate) " +
                                         "VALUES(@idEnrollment, @semester, @idStudy, @startDate)";
@@ -183,15 +201,20 @@ namespace CW10.DAL
 
         public int DeleteStudent(string indexNumber)
         {
-            using var connection = SqlConnection;
-            using var command = new SqlCommand
+            var student = new Student
             {
-                Connection = connection,
-                CommandText = "DELETE FROM Student WHERE IndexNumber = @indexNumber"
+                IndexNumber = indexNumber
             };
-            command.Parameters.AddWithValue("indexNumber", indexNumber);
-            connection.Open();
-            return command.ExecuteNonQuery();
+            _dbContext.Attach(student);
+            _dbContext.Remove(student);
+            try
+            {
+                return _dbContext.SaveChanges();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return 0;
+            }
         }
 
         public Enrollment GetEnrollment(int idEnrollment)
@@ -211,7 +234,7 @@ namespace CW10.DAL
                 {
                     IdEnrollment = IntegerType.FromObject(dataReader["IdEnrollment"]),
                     Semester = IntegerType.FromObject(dataReader["Semester"]),
-                    StartDate = dataReader["StartDate"].ToString(),
+                    StartDate = DateTime.Parse(dataReader["StartDate"].ToString()),
                     IdStudy = IntegerType.FromObject(dataReader["IdStudy"])
                 };
                 return enrollment;
@@ -237,7 +260,7 @@ namespace CW10.DAL
                 {
                     IdEnrollment = IntegerType.FromObject(dataReader["IdEnrollment"]),
                     Semester = IntegerType.FromObject(dataReader["Semester"]),
-                    StartDate = dataReader["StartDate"].ToString(),
+                    StartDate = DateTime.Parse(dataReader["StartDate"].ToString()),
                     IdStudy = IntegerType.FromObject(dataReader["IdStudy"])
                 };
                 return enrollment;
@@ -270,30 +293,9 @@ namespace CW10.DAL
 
         public Student GetStudent(string indexNumber)
         {
-            using var connection = SqlConnection;
-            using var command = new SqlCommand
-            {
-                Connection = connection,
-                CommandText = "SELECT * FROM Student WHERE IndexNumber = @indexNumber"
-            };
-            command.Parameters.AddWithValue("indexNumber", indexNumber);
-            connection.Open();
-            using var dataReader = command.ExecuteReader();
-            if (dataReader.Read())
-            {
-                var student = new Student
-                {
-                    IndexNumber = dataReader["IndexNumber"].ToString(),
-                    FirstName = dataReader["FirstName"].ToString(),
-                    LastName = dataReader["LastName"].ToString(),
-                    BirthDate = dataReader["BirthDate"].ToString(),
-                    IdEnrollment = IntegerType.FromObject(dataReader["IdEnrollment"]),
-                    Password = dataReader["Password"].ToString(),
-                    Salt = dataReader["Salt"].ToString()
-                };
-                return student;
-            }
-            return null;
+            return _dbContext.Student
+                .Where(student => string.Equals(student.IndexNumber, indexNumber))
+                .First();
         }
 
         public Student GetStudent(string indexNumber, string password)
@@ -315,7 +317,7 @@ namespace CW10.DAL
                     IndexNumber = dataReader["IndexNumber"].ToString(),
                     FirstName = dataReader["FirstName"].ToString(),
                     LastName = dataReader["LastName"].ToString(),
-                    BirthDate = dataReader["BirthDate"].ToString(),
+                    BirthDate = DateTime.Parse(dataReader["BirthDate"].ToString()),
                     IdEnrollment = IntegerType.FromObject(dataReader["IdEnrollment"]),
                     Password = dataReader["Password"].ToString(),
                     Salt = dataReader["Salt"].ToString()
@@ -346,7 +348,7 @@ namespace CW10.DAL
                 {
                     IdEnrollment = IntegerType.FromObject(dataReader["IdEnrollment"]),
                     Semester = IntegerType.FromObject(dataReader["Semester"]),
-                    StartDate = dataReader["StartDate"].ToString(),
+                    StartDate = DateTime.Parse(dataReader["StartDate"].ToString()),
                     Name = dataReader["Name"].ToString(),
                 };
                 return enrollment;
@@ -357,31 +359,15 @@ namespace CW10.DAL
         public IEnumerable<Student> GetStudents(string orderBy)
         {
             if (orderBy == null)
-                orderBy = "IndexNumber";
-            List<Student> students = new List<Student>();
-            using var connection = SqlConnection;
-            using var command = new SqlCommand()
+                orderBy = "indexnumber";
+            return (orderBy.Trim().ToLower()) switch
             {
-                Connection = connection,
-                CommandText = $"SELECT * FROM Student ORDER BY {orderBy}"
+                "firstname" => _dbContext.Student.OrderBy(student => student.FirstName).ToList(),
+                "lastname" => _dbContext.Student.OrderBy(student => student.LastName).ToList(),
+                "birthdate" => _dbContext.Student.OrderBy(student => student.BirthDate).ToList(),
+                "idenrollment" => _dbContext.Student.OrderBy(student => student.IdEnrollment).ToList(),
+                _ => _dbContext.Student.OrderBy(student => student.IndexNumber).ToList(),
             };
-            connection.Open();
-            using var dataReader = command.ExecuteReader();
-            while (dataReader.Read())
-            {
-                var student = new Student
-                {
-                    IndexNumber = dataReader["IndexNumber"].ToString(),
-                    FirstName = dataReader["FirstName"].ToString(),
-                    LastName = dataReader["LastName"].ToString(),
-                    BirthDate = dataReader["BirthDate"].ToString(),
-                    IdEnrollment = IntegerType.FromObject(dataReader["IdEnrollment"]),
-                    Password = dataReader["Password"].ToString(),
-                    Salt = dataReader["Salt"].ToString()
-                };
-                students.Add(student);
-            }
-            return students;
         }
 
         public Studies GetStudies(string studiesName)
@@ -426,7 +412,7 @@ namespace CW10.DAL
                 {
                     IdEnrollment = IntegerType.FromObject(dataReader["IdEnrollment"]),
                     Semester = IntegerType.FromObject(dataReader["Semester"]),
-                    StartDate = dataReader["StartDate"].ToString(),
+                    StartDate = DateTime.Parse(dataReader["StartDate"].ToString()),
                     IdStudy = IntegerType.FromObject(dataReader["IdStudy"])
                 };
                 return enrollment;
@@ -436,24 +422,15 @@ namespace CW10.DAL
 
         public int UpdateStudent(string indexNumber, Student student)
         {
-            using var connection = SqlConnection;
-            using var command = new SqlCommand
-            {
-                Connection = connection,
-                CommandText = "UPDATE Student " +
-                "SET IndexNumber = @newIndexNumber, FirstName = @firstName, " +
-                "LastName = @lastName, BirthDate = @birthDate, " +
-                "IdEnrollment = @idEnrollment " +
-                "WHERE IndexNumber = @oldIndexNumber"
-            };
-            command.Parameters.AddWithValue("newIndexNumber", student.IndexNumber);
-            command.Parameters.AddWithValue("firstName", student.FirstName);
-            command.Parameters.AddWithValue("lastName", student.LastName);
-            command.Parameters.AddWithValue("birthDate", student.BirthDate);
-            command.Parameters.AddWithValue("idEnrollment", student.IdEnrollment);
-            command.Parameters.AddWithValue("oldIndexNumber", indexNumber);
-            connection.Open();
-            return command.ExecuteNonQuery();
+            var originalStudent = _dbContext.Student.Where(s => string.Equals(s.IndexNumber, indexNumber)).FirstOrDefault();
+            if (originalStudent == null)
+                return 0;
+            originalStudent.IndexNumber = student.IndexNumber;
+            originalStudent.FirstName = student.FirstName;
+            originalStudent.LastName = student.LastName;
+            originalStudent.BirthDate = student.BirthDate;
+            originalStudent.IdEnrollment = student.IdEnrollment;
+            return _dbContext.SaveChanges();
         }
     }
 }

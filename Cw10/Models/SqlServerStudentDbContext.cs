@@ -2,20 +2,20 @@
 
 namespace CW10.Models
 {
-    public partial class SqlServerStudentContext : DbContext
+    public partial class SqlServerStudentDbContext : DbContext
     {
-        public SqlServerStudentContext()
+        public SqlServerStudentDbContext()
         {
         }
 
-        public SqlServerStudentContext(DbContextOptions<SqlServerStudentContext> options)
+        public SqlServerStudentDbContext(DbContextOptions<SqlServerStudentDbContext> options)
             : base(options)
         {
         }
 
-        public virtual DbSet<Enrollment> Enrollments { get; set; }
-        public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
-        public virtual DbSet<Student> Students { get; set; }
+        public virtual DbSet<Enrollment> Enrollment { get; set; }
+        public virtual DbSet<RefreshToken> RefreshToken { get; set; }
+        public virtual DbSet<Student> Student { get; set; }
         public virtual DbSet<Studies> Studies { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
