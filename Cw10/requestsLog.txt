@@ -1,0 +1,83 @@
+﻿====================================================================
+On: 17/05/2020 16:50:46
+Method: GET
+Path: /api/students
+QueryString: 
+Body:
+
+====================================================================
+On: 17/05/2020 16:50:46
+Method: GET
+Path: /favicon.ico
+QueryString: 
+Body:
+
+====================================================================
+On: 17/05/2020 16:53:07
+Method: GET
+Path: /api/students
+QueryString: 
+Body:
+
+====================================================================
+On: 17/05/2020 16:53:51
+Method: GET
+Path: /api/students
+QueryString: 
+Body:
+
+====================================================================
+On: 17/05/2020 16:54:04
+Method: PUT
+Path: /api/students/i7
+QueryString: 
+Body:
+{
+    "indexNumber": "i8",
+    "firstName": "Nowy",
+    "lastName": "User",
+    "birthDate": "05-Jul-56 12:00:00 AM",
+    "idEnrollment": 1001
+}
+====================================================================
+On: 23/05/2020 23:38:51
+Method: GET
+Path: /api/students
+QueryString: 
+Body:
+
+====================================================================
+On: 23/05/2020 23:38:52
+Method: GET
+Path: /favicon.ico
+QueryString: 
+Body:
+
+====================================================================
+On: 23/05/2020 23:39:15
+Method: GET
+Path: /api/students
+QueryString: 
+Body:
+
+====================================================================
+On: 23/05/2020 23:39:15
+Method: GET
+Path: /favicon.ico
+QueryString: 
+Body:
+
+====================================================================
+On: 23/05/2020 23:40:11
+Method: GET
+Path: /api/students
+QueryString: 
+Body:
+
+====================================================================
+On: 11.06.2020 13:16:56
+Method: GET
+Path: /api/students
+QueryString: 
+Body:
+
