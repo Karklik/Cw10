@@ -295,7 +295,7 @@ namespace CW10.DAL
         {
             return _dbContext.Student
                 .Where(student => string.Equals(student.IndexNumber, indexNumber))
-                .First();
+                .FirstOrDefault();
         }
 
         public Student GetStudent(string indexNumber, string password)
