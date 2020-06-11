@@ -67,123 +67,43 @@ namespace CW10.DAL
         public Enrollment CreateStudentEnrollment(
             string indexNumber, string firstName, string lastName, DateTime birthDate, string studiesName)
         {
-            using var connection = SqlConnection;
-            connection.Open();
-            using var transaction = connection.BeginTransaction();
-            using var command = new SqlCommand
+            var studies = GetStudies(studiesName);
+            // If studies dosen't exists, stop
+            if (studies == null)
+                throw new ArgumentException("Studies dosen't exists");
+
+            var enrollment = GetEnrollment(studies.IdStudy, 1);
+            // If enrollment dosen't exists, create it
+            if (enrollment == null)
             {
-                Connection = connection,
-                Transaction = transaction
-            };
-            try
-            {
-                // Checking if studies exists
-                command.CommandText = "SELECT * FROM Studies WHERE Name = @name";
-                command.Parameters.AddWithValue("name", studiesName);
-                using var studiesDataReader = command.ExecuteReader();
-                if (!studiesDataReader.Read())
+                enrollment = new Enrollment
                 {
-                    studiesDataReader.Close();
-                    transaction.Rollback();
-                    throw new ArgumentException("Studies dosen't exists");
-                }
-                var studies = new Studies
-                {
-                    IdStudy = IntegerType.FromObject(studiesDataReader["IdStudy"]),
-                    Name = studiesDataReader["Name"].ToString()
+                    IdEnrollment = _dbContext.Enrollment.Max(e => e.IdEnrollment) + 1,
+                    IdStudy = studies.IdStudy,
+                    Semester = 1,
+                    StartDate = DateTime.Now
                 };
-                studiesDataReader.Close();
-
-                // Checking if enrollment exisits
-                command.CommandText = "SELECT * " +
-                                    "FROM Enrollment " +
-                                    "WHERE IdStudy = @idStudy AND Semester = 1";
-                command.Parameters.AddWithValue("idStudy", studies.IdStudy);
-                using var entrollmentDataReader = command.ExecuteReader();
-                Enrollment enrollment;
-                static Enrollment enrollmentMapper(SqlDataReader reader)
-                {
-                    var enrollment = new Enrollment
-                    {
-                        IdEnrollment = IntegerType.FromObject(reader["IdEnrollment"]),
-                        Semester = IntegerType.FromObject(reader["Semester"]),
-                        StartDate = DateTime.Parse(reader["StartDate"].ToString()),
-                        IdStudy = IntegerType.FromObject(reader["IdStudy"])
-                    };
-                    reader.Close();
-                    return enrollment;
-                }
-                // If enrollment dosen't exist create new one
-                if (!entrollmentDataReader.Read())
-                {
-                    entrollmentDataReader.Close();
-                    // Get IdEnrollment as max +1 since DB don't have auto increment on PK
-                    command.CommandText = "select max(IdEnrollment) + 1 from Enrollment";
-                    var IdEnrollment = 0;
-                    using var idEntrollmentDataReader = command.ExecuteReader();
-                    if (idEntrollmentDataReader.Read())
-                        IdEnrollment = IntegerType.FromObject(idEntrollmentDataReader[0]);
-                    idEntrollmentDataReader.Close();
-
-                    // Prepare Enrollment object for insert
-                    enrollment = new Enrollment
-                    {
-                        IdEnrollment = IdEnrollment,
-                        Semester = 1,
-                        IdStudy = studies.IdStudy,
-                        StartDate = DateTime.Now
-                    };
-                    command.CommandText = "INSERT INTO Enrollment (IdEnrollment, Semester, IdStudy, StartDate) " +
-                                        "VALUES(@idEnrollment, @semester, @idStudy, @startDate)";
-                    command.Parameters.AddWithValue("idEnrollment", enrollment.IdEnrollment);
-                    command.Parameters.AddWithValue("semester", enrollment.Semester);
-                    command.Parameters.AddWithValue("startDate", enrollment.StartDate);
-                    command.ExecuteNonQuery();
-                    command.CommandText = "SELECT * " +
-                                        "FROM Enrollment " +
-                                        "WHERE IdStudy = @idStudy AND Semester = 1";
-                    using var entrollmentDataReader2 = command.ExecuteReader();
-                    entrollmentDataReader2.Read();
-                    enrollment = enrollmentMapper(entrollmentDataReader2);
-                }
-                else
-                {
-                    enrollment = enrollmentMapper(entrollmentDataReader);
-                    command.Parameters.AddWithValue("idEnrollment", enrollment.IdEnrollment);
-                }
-
-                // Chceking if index number is unique
-                command.CommandText = "SELECT * FROM Student WHERE IndexNumber = @indexNumber";
-                command.Parameters.AddWithValue("indexNumber", indexNumber);
-                using var studentDataReader = command.ExecuteReader();
-                if (studentDataReader.Read())
-                {
-                    studentDataReader.Close();
-                    transaction.Rollback();
-                    throw new ArgumentException("Student with specific IndexNumber already exists");
-                }
-                studentDataReader.Close();
-
-                // Create new student
-                command.CommandText = "INSERT INTO Student " +
-                    "VALUES(@indexNumber, @firstName, @lastName, @birthDate, @idEnrollment)";
-                command.Parameters.AddWithValue("firstName", firstName);
-                command.Parameters.AddWithValue("lastName", lastName);
-                command.Parameters.AddWithValue("birthDate", birthDate.ToString("yyyy-MM-dd"));
-
-                if (command.ExecuteNonQuery() == 0)
-                {
-                    transaction.Rollback();
-                    return null;
-                }
-                transaction.Commit();
-                return enrollment;
+                _dbContext.Attach(enrollment);
+                _dbContext.Add(enrollment);
             }
-            catch (NotFiniteNumberException)
+
+            var student = GetStudent(indexNumber);
+            // If student already exists, stop
+            if (student != null)
+                throw new ArgumentException("Student with specific IndexNumber already exists");
+            student = new Student
             {
-                transaction.Rollback();
-            }
-            return null;
+                IndexNumber = indexNumber,
+                FirstName = firstName,
+                LastName = lastName,
+                BirthDate = birthDate,
+                IdEnrollment = enrollment.IdEnrollment
+            };
+
+            if (CreateStudent(student) == 0)
+                return null;
+            else
+                return enrollment;
         }
 
         public int DeleteRefreshToken(string refreshToken)
@@ -244,28 +164,10 @@ namespace CW10.DAL
 
         public Enrollment GetEnrollment(int idStudy, int semester)
         {
-            using var connection = SqlConnection;
-            using var command = new SqlCommand
-            {
-                Connection = connection,
-                CommandText = "SELECT * FROM Enrollment WHERE IdStudy = @idStudy AND Semester = @semester"
-            };
-            command.Parameters.AddWithValue("idStudy", idStudy);
-            command.Parameters.AddWithValue("semester", semester);
-            connection.Open();
-            using var dataReader = command.ExecuteReader();
-            if (dataReader.Read())
-            {
-                var enrollment = new Enrollment
-                {
-                    IdEnrollment = IntegerType.FromObject(dataReader["IdEnrollment"]),
-                    Semester = IntegerType.FromObject(dataReader["Semester"]),
-                    StartDate = DateTime.Parse(dataReader["StartDate"].ToString()),
-                    IdStudy = IntegerType.FromObject(dataReader["IdStudy"])
-                };
-                return enrollment;
-            }
-            return null;
+            return _dbContext.Enrollment
+                .Where(e => e.IdStudy == idStudy)
+                .Where(e => e.Semester == semester)
+                .FirstOrDefault();
         }
 
         public Student GetRefreshTokenOwner(string refreshToken)
@@ -349,7 +251,7 @@ namespace CW10.DAL
                     IdEnrollment = IntegerType.FromObject(dataReader["IdEnrollment"]),
                     Semester = IntegerType.FromObject(dataReader["Semester"]),
                     StartDate = DateTime.Parse(dataReader["StartDate"].ToString()),
-                    Name = dataReader["Name"].ToString(),
+                    //Name = dataReader["Name"].ToString(),
                 };
                 return enrollment;
             }
@@ -372,52 +274,45 @@ namespace CW10.DAL
 
         public Studies GetStudies(string studiesName)
         {
-            using var connection = SqlConnection;
-            using var command = new SqlCommand
-            {
-                Connection = connection,
-                CommandText = "SELECT * FROM Studies WHERE Name = @studiesName"
-            };
-            command.Parameters.AddWithValue("studiesName", studiesName);
-            connection.Open();
-            using var dataReader = command.ExecuteReader();
-            if (dataReader.Read())
-            {
-                Studies studies = new Studies
-                {
-                    IdStudy = IntegerType.FromObject(dataReader["IdStudy"]),
-                    Name = dataReader["Name"].ToString()
-                };
-                return studies;
-            }
-            return null;
+            return _dbContext.Studies.Where(study => string.Equals(study.Name, studiesName)).FirstOrDefault();
         }
 
         public Enrollment SemesterPromote(int idStudy, int semester)
         {
-            using var connection = SqlConnection;
-            using var command = new SqlCommand
+            var currentEnrollment = GetEnrollment(idStudy, semester);
+            // If current enrollment dosen't exists, stop 
+            if (currentEnrollment == null) return null;
+
+            var nextEnrollment = GetEnrollment(idStudy, semester + 1);
+            // If enrollment for next semester dosen't exists, create it
+            if (nextEnrollment == null)
             {
-                Connection = connection,
-                CommandText = "sp_SemesterPromote",
-                CommandType = CommandType.StoredProcedure
-            };
-            command.Parameters.AddWithValue("id_study", idStudy);
-            command.Parameters.AddWithValue("semester", semester);
-            connection.Open();
-            using var dataReader = command.ExecuteReader();
-            if (dataReader.Read())
-            {
-                var enrollment = new Enrollment
+                nextEnrollment = new Enrollment
                 {
-                    IdEnrollment = IntegerType.FromObject(dataReader["IdEnrollment"]),
-                    Semester = IntegerType.FromObject(dataReader["Semester"]),
-                    StartDate = DateTime.Parse(dataReader["StartDate"].ToString()),
-                    IdStudy = IntegerType.FromObject(dataReader["IdStudy"])
+                    IdEnrollment = _dbContext.Enrollment.Max(e => e.IdEnrollment) + 1,
+                    IdStudy = currentEnrollment.IdStudy,
+                    Semester = currentEnrollment.Semester + 1,
+                    StartDate = DateTime.Now
                 };
-                return enrollment;
+                _dbContext.Attach(nextEnrollment);
+                _dbContext.Add(nextEnrollment);
             }
-            return null;
+
+            // Promote students
+            _dbContext.Student
+                .Where(s => s.IdEnrollment == currentEnrollment.IdEnrollment)
+                .Select(s => s)
+                .ToList()
+                .ForEach(s =>
+                {
+                    s.IdEnrollment = nextEnrollment.IdEnrollment;
+                    _dbContext.Attach(s);
+                    _dbContext.Entry(s).State = EntityState.Modified;
+                });
+
+            _dbContext.SaveChanges();
+
+            return nextEnrollment;
         }
 
         public int UpdateStudent(string indexNumber, Student student)

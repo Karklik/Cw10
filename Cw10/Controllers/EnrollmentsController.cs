@@ -42,8 +42,7 @@ namespace CW10.Controllers
             try
             {
                 var enrollment = _dbService.CreateStudentEnrollment(
-                    request.IndexNumber, request.FirstName, request.LastName,
-                    DateTime.ParseExact(request.BirthDate, "dd.MM.yyyy", null), request.Studies);
+                    request.IndexNumber, request.FirstName, request.LastName, request.BirthDate, request.Studies);
                 if (enrollment != null)
                 {
                     return CreatedAtAction(nameof(GetEnrollment),
@@ -63,10 +62,6 @@ namespace CW10.Controllers
             {
                 return BadRequest(e.Message);
             }
-            catch (FormatException e)
-            {
-                return BadRequest(e.Message);
-            }
         }
 
         [HttpPost("promotions")]
@@ -82,7 +77,7 @@ namespace CW10.Controllers
 
             var newEnrollment = _dbService.SemesterPromote(studies.IdStudy, request.Semester);
             return CreatedAtAction(nameof(GetEnrollment),
-                new { idEnrollment = enrollment.IdEnrollment },
+                new { idEnrollment = newEnrollment.IdEnrollment },
                 new GetEntrollmentResponse
                 {
                     IdEnrollment = newEnrollment.IdEnrollment,

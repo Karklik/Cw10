@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace CW10.OldModels
 {
@@ -11,7 +12,7 @@ namespace CW10.OldModels
         [Required]
         public string LastName { get; set; }
         [Required]
-        public string BirthDate { get; set; }
+        public DateTime BirthDate { get; set; }
         [Required]
         public string Studies { get; set; }
     }
