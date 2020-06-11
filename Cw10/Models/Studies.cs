@@ -1,12 +1,17 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.Collections.Generic;
 
-namespace CW10.Models
+namespace CW10.DBModels
 {
-    public class Studies
+    public partial class Studies
     {
-        [Required]
+        public Studies()
+        {
+            Enrollments = new HashSet<Enrollment>();
+        }
+
         public int IdStudy { get; set; }
-        [Required]
         public string Name { get; set; }
+
+        public virtual ICollection<Enrollment> Enrollments { get; set; }
     }
 }

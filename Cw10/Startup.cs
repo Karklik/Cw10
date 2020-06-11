@@ -1,8 +1,10 @@
 using CW10.DAL;
+using CW10.DBModels;
 using CW10.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -38,6 +40,8 @@ namespace CW10
                     };
                 });
             services.AddTransient<IStudentDbService, SqlServerStudentDbService>();
+            services.AddDbContext<SqlServerStudentContext>(optionsAction =>
+                optionsAction.UseSqlServer(Configuration["dbConnectionString"]));
             services.AddControllers();
             services.AddSwaggerGen(config =>
                 config.SwaggerDoc("v1", new OpenApiInfo { Title = "Students App API", Version = "v1" })

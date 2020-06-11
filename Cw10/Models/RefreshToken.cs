@@ -1,8 +1,10 @@
-﻿namespace CW10.Models
+﻿namespace CW10.DBModels
 {
-    public class RefreshToken
+    public partial class RefreshToken
     {
         public string Id { get; set; }
         public string IndexNumber { get; set; }
+
+        public virtual Student IndexNumberNavigation { get; set; }
     }
 }
